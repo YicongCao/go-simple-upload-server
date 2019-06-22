@@ -11,8 +11,6 @@ import (
 	"path"
 	"regexp"
 	"strings"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // Server represents a simple-upload server.
@@ -45,22 +43,26 @@ func (s Server) handleGet(w http.ResponseWriter, r *http.Request) {
 func (s Server) handlePost(w http.ResponseWriter, r *http.Request) {
 	srcFile, info, err := r.FormFile("file")
 	if err != nil {
-		logger.WithError(err).Error("failed to acquire the uploaded content")
+		// logger.WithError(err).Error("failed to acquire the uploaded content")
+		fmt.Println("failed to acquire the uploaded content, err:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	}
 	defer srcFile.Close()
-	logger.Debug(info)
+	// logger.Debug(info)
+	fmt.Println(info)
 	size, err := getSize(srcFile)
 	if err != nil {
-		logger.WithError(err).Error("failed to get the size of the uploaded content")
+		// logger.WithError(err).Error("failed to get the size of the uploaded content")
+		fmt.Println("failed to get the size of the uploaded content, err:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	}
 	if size > s.MaxUploadSize {
-		logger.WithField("size", size).Info("file size exceeded")
+		// logger.WithField("size", size).Info("file size exceeded")
+		fmt.Println("file size exceeded, size:", size)
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		writeError(w, errors.New("uploaded file size exceeds the limit"))
 		return
@@ -68,7 +70,8 @@ func (s Server) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(srcFile)
 	if err != nil {
-		logger.WithError(err).Error("failed to read the uploaded content")
+		// logger.WithError(err).Error("failed to read the uploaded content")
+		fmt.Println("failed to read the uploaded content, err:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
@@ -81,22 +84,25 @@ func (s Server) handlePost(w http.ResponseWriter, r *http.Request) {
 	dstPath := path.Join(s.DocumentRoot, filename)
 	dstFile, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		logger.WithError(err).WithField("path", dstPath).Error("failed to open the file")
+		// logger.WithError(err).WithField("path", dstPath).Error("failed to open the file")
+		fmt.Println("failed to open the file, err:", err, "path:", dstPath)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	}
 	defer dstFile.Close()
 	if written, err := dstFile.Write(body); err != nil {
-		logger.WithError(err).WithField("path", dstPath).Error("failed to write the content")
+		// logger.WithError(err).WithField("path", dstPath).Error("failed to write the content")
+		fmt.Println("failed to write the content, err:", err, "path:", dstPath)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	} else if int64(written) != size {
-		logger.WithFields(logrus.Fields{
-			"size":    size,
-			"written": written,
-		}).Error("uploaded file size and written size differ")
+		// logger.WithFields(logrus.Fields{
+		// 	"size":    size,
+		// 	"written": written,
+		// }).Error("uploaded file size and written size differ")
+		fmt.Println("uploaded file size and written size differ, size:", size, "written:", written)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, fmt.Errorf("the size of uploaded content is %d, but %d bytes written", size, written))
 	}
@@ -105,11 +111,12 @@ func (s Server) handlePost(w http.ResponseWriter, r *http.Request) {
 		uploadedURL = "/" + uploadedURL
 	}
 	uploadedURL = "/files" + uploadedURL
-	logger.WithFields(logrus.Fields{
-		"path": dstPath,
-		"url":  uploadedURL,
-		"size": size,
-	}).Info("file uploaded by POST")
+	// logger.WithFields(logrus.Fields{
+	// 	"path": dstPath,
+	// 	"url":  uploadedURL,
+	// 	"size": size,
+	// }).Info("file uploaded by POST")
+	fmt.Println("file uploaded by POST, path:", dstPath, "url:", uploadedURL, "size:", size)
 	w.WriteHeader(http.StatusOK)
 	writeSuccess(w, uploadedURL)
 }
@@ -118,7 +125,8 @@ func (s Server) handlePut(w http.ResponseWriter, r *http.Request) {
 	re := regexp.MustCompile(`^/files/([^/]+)$`)
 	matches := re.FindStringSubmatch(r.URL.Path)
 	if matches == nil {
-		logger.WithField("path", r.URL.Path).Info("invalid path")
+		// logger.WithField("path", r.URL.Path).Info("invalid path")
+		fmt.Println("invalid path, path:", r.URL.Path)
 		w.WriteHeader(http.StatusNotFound)
 		writeError(w, fmt.Errorf("\"%s\" is not found", r.URL.Path))
 		return
@@ -126,7 +134,8 @@ func (s Server) handlePut(w http.ResponseWriter, r *http.Request) {
 	targetPath := path.Join(s.DocumentRoot, matches[1])
 	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		logger.WithError(err).WithField("path", targetPath).Error("failed to open the file")
+		// logger.WithError(err).WithField("path", targetPath).Error("failed to open the file")
+		fmt.Println("failed to open the file, err:", err, "path:", targetPath)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
@@ -135,27 +144,31 @@ func (s Server) handlePut(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	srcFile, info, err := r.FormFile("file")
 	if err != nil {
-		logger.WithError(err).WithField("path", targetPath).Error("failed to acquire the uploaded content")
+		// logger.WithError(err).WithField("path", targetPath).Error("failed to acquire the uploaded content")
+		fmt.Println("failed to acquire the uploaded content, err:", err, "path:", targetPath)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	}
 	defer srcFile.Close()
 	// dump headers for the file
-	logger.Debug(info.Header)
+	// logger.Debug(info.Header)
+	fmt.Println(info.Header)
 
 	size, err := getSize(srcFile)
 	if err != nil {
-		logger.WithError(err).WithField("path", targetPath).Error("failed to get the size of the uploaded content")
+		// logger.WithError(err).WithField("path", targetPath).Error("failed to get the size of the uploaded content")
+		fmt.Println("failed to get the size of the uploaded content, err:", err, "path:", targetPath)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	}
 	if size > s.MaxUploadSize {
-		logger.WithFields(logrus.Fields{
-			"path": targetPath,
-			"size": size,
-		}).Info("file size exceeded")
+		// logger.WithFields(logrus.Fields{
+		// 	"path": targetPath,
+		// 	"size": size,
+		// }).Info("file size exceeded")
+		fmt.Println("file size exceeded, path:", targetPath, "size:", size)
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		writeError(w, errors.New("uploaded file size exceeds the limit"))
 		return
@@ -163,15 +176,17 @@ func (s Server) handlePut(w http.ResponseWriter, r *http.Request) {
 
 	n, err := io.Copy(file, srcFile)
 	if err != nil {
-		logger.WithError(err).WithField("path", targetPath).Error("failed to write body to the file")
+		// logger.WithError(err).WithField("path", targetPath).Error("failed to write body to the file")
+		fmt.Println("failed to write body to the file, err:", err, "path:", targetPath)
 		w.WriteHeader(http.StatusInternalServerError)
 		writeError(w, err)
 		return
 	}
-	logger.WithFields(logrus.Fields{
-		"path": r.URL.Path,
-		"size": n,
-	}).Info("file uploaded by PUT")
+	// logger.WithFields(logrus.Fields{
+	// 	"path": r.URL.Path,
+	// 	"size": n,
+	// }).Info("file uploaded by PUT")
+	fmt.Println("file uploaded by PUT, path:", targetPath, "size:", n)
 	w.WriteHeader(http.StatusOK)
 	writeSuccess(w, r.URL.Path)
 }
